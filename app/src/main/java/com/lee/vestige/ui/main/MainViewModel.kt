@@ -5,7 +5,8 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.lee.vestige.VestigeApp
-import com.lee.vestige.export.ExportResult
+import com.lee.vestige.export.SaveResult
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,13 +14,15 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
+enum class Screen { Home, Editor }
+
 data class MainUiState(
-    val selectedDate: LocalDate = LocalDate.now(),
+    val screen: Screen = Screen.Home,
     val exportDirUri: Uri? = null,
-    val isExporting: Boolean = false,
-    /** Set when a file already exists; UI shows an overwrite confirmation. */
-    val pendingOverwriteFileName: String? = null,
-    /** Transient user-facing message (success / error). */
+    val editorDate: LocalDate = LocalDate.now(),
+    val editorContent: String = "",
+    val isBusy: Boolean = false,
+    /** Transient user-facing message (error / status). */
     val message: String? = null,
 )
 
@@ -30,6 +33,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
+    /** True when the editor has unsaved changes (drives auto-save). */
+    private var dirty = false
+
     init {
         // Reflect the persisted export directory into UI state.
         viewModelScope.launch {
@@ -37,56 +43,86 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 _uiState.update { it.copy(exportDirUri = uri) }
             }
         }
-    }
-
-    fun onDateSelected(date: LocalDate) {
-        _uiState.update { it.copy(selectedDate = date) }
+        // Timed auto-save: every 30s, persist if there are unsaved edits and we're editing.
+        viewModelScope.launch {
+            while (true) {
+                delay(AUTO_SAVE_INTERVAL_MS)
+                if (_uiState.value.screen == Screen.Editor) saveIfDirty()
+            }
+        }
     }
 
     fun onDirectoryPicked(uri: Uri) {
         viewModelScope.launch {
             container.settingsStore.setExportTreeUri(uri)
-            _uiState.update { it.copy(message = "已设置导出目录") }
+            _uiState.update { it.copy(message = "已设置保存目录") }
         }
+    }
+
+    /**
+     * Open [date] in the editor: load the existing note if present, otherwise generate
+     * an initial note from the data plugins. A freshly generated note is marked dirty so
+     * auto-save persists it.
+     */
+    fun openDay(date: LocalDate) {
+        val dirUri = _uiState.value.exportDirUri
+        if (dirUri == null) {
+            _uiState.update { it.copy(message = "请先在右上角选择保存目录") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(isBusy = true) }
+            val store = container.noteStoreFor(dirUri)
+            val existing = store.read(date)
+            val content = existing
+                ?: container.renderer.render(container.aggregator.aggregate(date))
+            dirty = existing == null // generated-but-unsaved should be saved
+            _uiState.update {
+                it.copy(
+                    screen = Screen.Editor,
+                    editorDate = date,
+                    editorContent = content,
+                    isBusy = false,
+                )
+            }
+        }
+    }
+
+    fun onContentChange(text: String) {
+        dirty = true
+        _uiState.update { it.copy(editorContent = text) }
+    }
+
+    /** Back / navigate up from the editor: save then return home. */
+    fun onLeaveEditor() {
+        viewModelScope.launch {
+            saveIfDirty()
+            _uiState.update { it.copy(screen = Screen.Home) }
+        }
+    }
+
+    /** App going to background: flush unsaved edits. */
+    fun onStop() {
+        viewModelScope.launch { saveIfDirty() }
     }
 
     fun onMessageShown() {
         _uiState.update { it.copy(message = null) }
     }
 
-    fun dismissOverwrite() {
-        _uiState.update { it.copy(pendingOverwriteFileName = null) }
+    private suspend fun saveIfDirty() {
+        if (!dirty) return
+        val state = _uiState.value
+        val dirUri = state.exportDirUri ?: return
+        val store = container.noteStoreFor(dirUri)
+        when (val result = store.write(state.editorDate, state.editorContent)) {
+            is SaveResult.Success -> dirty = false
+            is SaveResult.Error ->
+                _uiState.update { it.copy(message = "保存失败：${result.message}") }
+        }
     }
 
-    /** Triggered by the Export button. */
-    fun export(overwrite: Boolean = false) {
-        val state = _uiState.value
-        val dirUri = state.exportDirUri
-        if (dirUri == null) {
-            _uiState.update { it.copy(message = "请先选择导出目录") }
-            return
-        }
-
-        viewModelScope.launch {
-            _uiState.update { it.copy(isExporting = true, pendingOverwriteFileName = null) }
-
-            val entry = container.aggregator.aggregate(state.selectedDate)
-            val content = container.renderer.render(entry)
-            val fileName = "${state.selectedDate}.md"
-
-            val target = container.exportTargetFor(dirUri)
-            when (val result = target.export(fileName, content, overwrite)) {
-                is ExportResult.Success ->
-                    _uiState.update { it.copy(isExporting = false, message = "已导出 ${result.fileName}") }
-
-                is ExportResult.AlreadyExists ->
-                    _uiState.update {
-                        it.copy(isExporting = false, pendingOverwriteFileName = result.fileName)
-                    }
-
-                is ExportResult.Error ->
-                    _uiState.update { it.copy(isExporting = false, message = "导出失败：${result.message}") }
-            }
-        }
+    companion object {
+        private const val AUTO_SAVE_INTERVAL_MS = 60_000L
     }
 }

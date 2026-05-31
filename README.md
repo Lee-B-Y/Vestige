@@ -1,25 +1,37 @@
 # 留痕 Vestige
 
-把现实世界的数据桥接成 Markdown 日记。按所选日期，读取 Android 系统日历事件
-（并可选附上当天天气），生成一份 Obsidian 友好的 Markdown 日记文件。
+一个能独立使用的日记 App：按日期读取 Android 系统日历事件（并可选附上当天天气），
+生成 Markdown 草稿，**直接在 App 内编辑成稿**。文件以普通 Markdown 落盘，因此也能
+（可选地）放进 Obsidian Vault 获得更好的阅读体验——但 Obsidian 不是必需的。
 
 ## 设计要点
 
-- **本地优先 / Markdown 优先 / 不依赖云与后端。**
+- **本地优先 / Markdown 优先 / 不依赖云与后端 / 不依赖 Obsidian。**
 - **两个对称的扩展点：**
   - `DataPlugin`（`data/plugin/DataPlugin.kt`）抽象「数据从哪来」。日历只是第一个插件，
     未来加天气、步数、睡眠只需新建一个实现并在 `di/AppContainer.kt` 注册。
-  - `ExportTarget`（`export/ExportTarget.kt`）抽象「数据写到哪去」。V1 只实现
-    `SafExportTarget`（本地目录）；未来 OneDrive / 百度网盘实现同一接口即可，
+  - `NoteStore`（`export/NoteStore.kt`）抽象「日记读写到哪」。V1 只实现
+    `SafNoteStore`（本地目录，按年/月分文件夹）；未来 OneDrive / 百度网盘实现同一接口即可，
     主流程与 UI 不变。
-- 数据流：`DataPlugin.fetch` → `DaySection` → `DayEntry` → `MarkdownRenderer` → `ExportTarget`。
+- 数据流：`DataPlugin.fetch` → `DaySection` → `DayEntry` → `MarkdownRenderer` →（编辑）→ `NoteStore`。
 
-## 输出格式
+## 存储结构
 
-文件名固定 `YYYY-MM-DD.md`：
+日记按 `年/月` 自动分文件夹，避免堆在一个巨大目录里：
 
-文件名固定 `YYYY-MM-DD.md`。段落标题与文字**跟随系统语言**（中文系统如下，
-其它语言对应 Weather / Events / Notes）：
+```
+<你选的目录>/
+  2026/
+    05/
+      2026-05-31.md
+      2026-05-30.md
+    06/
+      2026-06-01.md
+```
+
+## 文件格式
+
+段落标题与文字**跟随系统语言**（中文系统如下，其它语言对应 Weather / Events / Notes）：
 
 ```markdown
 ---
@@ -44,18 +56,19 @@ generated_by: Vestige/1.0
 ```
 
 - `generated_by` 是预留的格式版本标记，便于将来迁移；Obsidian 会忽略它。
-- 「事件」段落刻意保持简洁：全天事件只写标题、不加前缀；无标题事件留空，
-  方便你在 Obsidian 里补写。重心是日记本身，附属数据不喧宾夺主。
+- 「事件」段落刻意保持简洁：全天事件只写标题、不加前缀；无标题事件留空待补。
+  重心是日记本身，附属数据不喧宾夺主。
 - 「天气」依赖定位，取不到（无权限/无网/日期超出 API 范围）时该段落直接省略。
-- 「笔记」是留给你在 Obsidian 里自由编辑的区域。
+- 「笔记」是留给你写日记正文的区域。
 
 ## 使用流程
 
-1. 选择导出目录（建议直接选 Obsidian Vault 里存放日记的子文件夹）。
-2. 选择日期。
-3. 点「导出 Markdown」。首次会申请日历读取权限。
-4. 若当天文件已存在，默认不覆盖，会弹窗询问是否「覆盖重新生成」——
-   **创建一次** 的语义：之后这个文件归你，程序不再主动改动。
+1. 首次在右上角选择保存目录（很少改，之后收在角落）。
+2. 首页点「**写今天的日记**」：当天文件不存在则自动生成草稿（天气+事件）并进入编辑器；
+   已存在则**载入续写**。其它日期走「其它日期…」菜单选择。
+3. 在编辑器里直接写。**自动保存**：每 1 分钟、退出编辑页、App 切后台 各存一次，
+   无需手动点保存。
+4. 写完返回。文件已按 `年/月` 落盘，可直接用 Obsidian 或任意文本编辑器打开。
 
 ## 关键技术决策
 
@@ -63,9 +76,10 @@ generated_by: Vestige/1.0
 - 天气用 **Open-Meteo**（免费、无需 API Key），定位用 `LocationManager` 最后已知位置
   （不依赖 Google Play 服务）。**注意：导出含天气时，经纬度会发送到 api.open-meteo.com，
   这是 App 唯一的对外网络请求。**
-- 文件写入走 **SAF**（`OpenDocumentTree` + 持久化 URI 授权），无需任何存储权限，
-  天然兼容 Obsidian Vault 与 Android 10+ 分区存储。
-- 唯一持久化的状态是导出目录 URI，存于 DataStore。
+- 文件读写走 **SAF**（`OpenDocumentTree` + 持久化 URI 授权），无需任何存储权限，
+  按年/月子目录 `findFile`/`createDirectory`，天然兼容 Obsidian Vault 与 Android 10+ 分区存储。
+- 单 Activity，用 `screen` 状态在「首页/编辑页」间切换，不引入导航库。
+- 唯一持久化的状态是保存目录 URI，存于 DataStore。
 - 应用名与 Markdown 文字跟随系统语言：中文「留痕」、其它「Vestige」。
 
 ## 构建

@@ -10,9 +10,9 @@ import com.lee.vestige.data.source.CalendarDataSource
 import com.lee.vestige.data.source.LocationProvider
 import com.lee.vestige.data.source.WeatherDataSource
 import com.lee.vestige.domain.DayAggregator
-import com.lee.vestige.export.ExportTarget
 import com.lee.vestige.export.MarkdownRenderer
-import com.lee.vestige.export.SafExportTarget
+import com.lee.vestige.export.NoteStore
+import com.lee.vestige.export.SafNoteStore
 
 /**
  * Tiny hand-rolled dependency container — intentionally not a DI framework for the MVP.
@@ -42,9 +42,9 @@ class AppContainer(context: Context) {
     val renderer = MarkdownRenderer(appContext)
 
     /**
-     * Resolves the export destination. V1 always returns a local SAF target built from
-     * the chosen directory. Future: read a "backend" setting and return a cloud target
-     * (OneDrive / Baidu Netdisk) instead — callers stay unchanged.
+     * Resolves the note store. V1 always returns a local SAF store built from the chosen
+     * directory. Future: read a "backend" setting and return a cloud store (OneDrive /
+     * Baidu Netdisk) instead — callers stay unchanged.
      */
-    fun exportTargetFor(treeUri: Uri): ExportTarget = SafExportTarget(appContext, treeUri)
+    fun noteStoreFor(treeUri: Uri): NoteStore = SafNoteStore(appContext, treeUri)
 }
