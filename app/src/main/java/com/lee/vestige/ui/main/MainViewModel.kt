@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
-enum class Screen { Home, Editor, Browse }
+enum class Screen { Home, Editor }
 
 data class MainUiState(
     val screen: Screen = Screen.Home,
@@ -92,17 +92,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Open the browse/search screen and load all existing notes. */
-    fun openBrowse() {
-        if (_uiState.value.exportDirUri == null) {
-            _uiState.update { it.copy(message = "请先在右上角选择保存目录") }
-            return
-        }
-        _uiState.update { it.copy(screen = Screen.Browse) }
-        runSearch("")
-    }
-
-    /** Run a search (blank query lists everything). */
+    /**
+     * Populate the browse list for the drawer. Blank query → directory tree (all notes);
+     * non-blank → full-text search results.
+     */
     fun runSearch(query: String) {
         val dirUri = _uiState.value.exportDirUri ?: return
         viewModelScope.launch {
@@ -111,10 +104,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val items = if (query.isBlank()) store.list() else store.search(query)
             _uiState.update { it.copy(browseItems = items, isBrowseLoading = false) }
         }
-    }
-
-    fun onLeaveBrowse() {
-        _uiState.update { it.copy(screen = Screen.Home) }
     }
 
     fun onContentChange(text: String) {
