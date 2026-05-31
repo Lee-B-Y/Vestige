@@ -1,0 +1,4 @@
+<resources>
+    <!-- A bare NoActionBar theme; all real styling is done by the Compose Material3 theme. -->
+    <style name="Theme.Vestige" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
