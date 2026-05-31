@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.lee.vestige.VestigeApp
+import com.lee.vestige.export.NoteListItem
 import com.lee.vestige.export.SaveResult
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +15,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
-enum class Screen { Home, Editor }
+enum class Screen { Home, Editor, Browse }
 
 data class MainUiState(
     val screen: Screen = Screen.Home,
@@ -22,6 +23,9 @@ data class MainUiState(
     val editorDate: LocalDate = LocalDate.now(),
     val editorContent: String = "",
     val isBusy: Boolean = false,
+    /** Browse/search results. */
+    val browseItems: List<NoteListItem> = emptyList(),
+    val isBrowseLoading: Boolean = false,
     /** Transient user-facing message (error / status). */
     val message: String? = null,
 )
@@ -86,6 +90,31 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 )
             }
         }
+    }
+
+    /** Open the browse/search screen and load all existing notes. */
+    fun openBrowse() {
+        if (_uiState.value.exportDirUri == null) {
+            _uiState.update { it.copy(message = "请先在右上角选择保存目录") }
+            return
+        }
+        _uiState.update { it.copy(screen = Screen.Browse) }
+        runSearch("")
+    }
+
+    /** Run a search (blank query lists everything). */
+    fun runSearch(query: String) {
+        val dirUri = _uiState.value.exportDirUri ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isBrowseLoading = true) }
+            val store = container.noteStoreFor(dirUri)
+            val items = if (query.isBlank()) store.list() else store.search(query)
+            _uiState.update { it.copy(browseItems = items, isBrowseLoading = false) }
+        }
+    }
+
+    fun onLeaveBrowse() {
+        _uiState.update { it.copy(screen = Screen.Home) }
     }
 
     fun onContentChange(text: String) {

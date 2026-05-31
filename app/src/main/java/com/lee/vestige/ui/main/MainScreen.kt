@@ -3,15 +3,25 @@ package com.lee.vestige.ui.main
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.provider.DocumentsContract
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,9 +41,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -88,6 +101,14 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
         }
     }
 
+    // Best-effort hint so the directory picker opens at Documents by default.
+    val documentsInitialUri = remember {
+        DocumentsContract.buildDocumentUri(
+            "com.android.externalstorage.documents",
+            "primary:Documents",
+        )
+    }
+
     val directoryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree(),
     ) { uri ->
@@ -121,14 +142,22 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
         Screen.Home -> HomeScreen(
             state = state,
             snackbarHostState = snackbarHostState,
-            onPickDirectory = { directoryLauncher.launch(null) },
+            onPickDirectory = { directoryLauncher.launch(documentsInitialUri) },
             onOpenDay = { date -> openWithPermissions(date) },
+            onOpenBrowse = viewModel::openBrowse,
         )
         Screen.Editor -> EditorScreen(
             state = state,
             snackbarHostState = snackbarHostState,
             onContentChange = viewModel::onContentChange,
             onBack = viewModel::onLeaveEditor,
+        )
+        Screen.Browse -> BrowseScreen(
+            state = state,
+            snackbarHostState = snackbarHostState,
+            onBack = viewModel::onLeaveBrowse,
+            onSearch = viewModel::runSearch,
+            onOpenNote = { date -> viewModel.openDay(date) },
         )
     }
 }
@@ -140,6 +169,7 @@ private fun HomeScreen(
     snackbarHostState: SnackbarHostState,
     onPickDirectory: () -> Unit,
     onOpenDay: (LocalDate) -> Unit,
+    onOpenBrowse: () -> Unit,
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
 
@@ -175,6 +205,10 @@ private fun HomeScreen(
             // Secondary, de-emphasized: writing for another day.
             TextButton(onClick = { showDatePicker = true }, enabled = !state.isBusy) {
                 Text("其它日期…")
+            }
+
+            TextButton(onClick = onOpenBrowse, enabled = !state.isBusy) {
+                Text("浏览/搜索日记")
             }
 
             if (state.exportDirUri == null) {
@@ -238,5 +272,68 @@ private fun EditorScreen(
                 .padding(padding)
                 .padding(12.dp),
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BrowseScreen(
+    state: MainUiState,
+    snackbarHostState: SnackbarHostState,
+    onBack: () -> Unit,
+    onSearch: (String) -> Unit,
+    onOpenNote: (LocalDate) -> Unit,
+) {
+    BackHandler(onBack = onBack)
+    var query by remember { mutableStateOf("") }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            TopAppBar(
+                title = { Text("日记") },
+                navigationIcon = { IconButton(onClick = onBack) { Text("←") } },
+            )
+        },
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    placeholder = { Text("搜索关键词…") },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { onSearch(query) }),
+                )
+                Spacer(Modifier.width(8.dp))
+                Button(onClick = { onSearch(query) }) { Text("搜索") }
+            }
+
+            when {
+                state.isBrowseLoading -> CircularProgressIndicator()
+                state.browseItems.isEmpty() -> Text("没有找到日记。")
+                else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    items(state.browseItems) { item ->
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onOpenNote(item.date) }
+                                .padding(vertical = 10.dp),
+                        ) {
+                            Text(item.date.toString(), fontWeight = FontWeight.Bold)
+                            item.snippet?.let { Text(it, maxLines = 2) }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

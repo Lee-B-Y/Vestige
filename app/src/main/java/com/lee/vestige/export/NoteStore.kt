@@ -9,6 +9,15 @@ sealed interface SaveResult {
 }
 
 /**
+ * One row in the browse/search list: a note's [date] and, for search results, a short
+ * [snippet] of matching context (null when just listing).
+ */
+data class NoteListItem(
+    val date: LocalDate,
+    val snippet: String? = null,
+)
+
+/**
  * Abstracts where day notes are read from and written to — the mirror image of
  * [com.lee.vestige.data.plugin.DataPlugin] (where data comes from).
  *
@@ -26,4 +35,13 @@ interface NoteStore {
 
     /** Create-or-overwrite the note for [date], creating year/month folders as needed. */
     suspend fun write(date: LocalDate, content: String): SaveResult
+
+    /** All existing notes, newest first. */
+    suspend fun list(): List<NoteListItem>
+
+    /**
+     * Notes whose content (or date) contains [keyword] (case-insensitive), newest first,
+     * each with a short matching snippet.
+     */
+    suspend fun search(keyword: String): List<NoteListItem>
 }
