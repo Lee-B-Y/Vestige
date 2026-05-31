@@ -1,7 +1,7 @@
 # 留痕 Vestige
 
-把现实世界的数据桥接成 Markdown 日记。V1 只做一件事：读取 Android 系统日历，
-按所选日期生成一份 Obsidian 友好的 Markdown 日记文件。
+把现实世界的数据桥接成 Markdown 日记。按所选日期，读取 Android 系统日历事件
+（并可选附上当天天气），生成一份 Obsidian 友好的 Markdown 日记文件。
 
 ## 设计要点
 
@@ -18,6 +18,9 @@
 
 文件名固定 `YYYY-MM-DD.md`：
 
+文件名固定 `YYYY-MM-DD.md`。段落标题与文字**跟随系统语言**（中文系统如下，
+其它语言对应 Weather / Events / Notes）：
+
 ```markdown
 ---
 date: 2026-05-31
@@ -26,17 +29,25 @@ generated_by: Vestige/1.0
 
 # 2026-05-31
 
-## Calendar
+## 天气
 
+- 晴 18°C ~ 26°C
+
+## 事件
+
+- 我的生日
 - 09:00-11:00 毕设答辩
 - 14:00-15:00 面试
 
-## Notes
+## 笔记
 
 ```
 
-`generated_by` 是预留的格式版本标记，便于将来迁移；Obsidian 会忽略它。
-`## Notes` 是留给你在 Obsidian 里自由编辑的区域。
+- `generated_by` 是预留的格式版本标记，便于将来迁移；Obsidian 会忽略它。
+- 「事件」段落刻意保持简洁：全天事件只写标题、不加前缀；无标题事件留空，
+  方便你在 Obsidian 里补写。重心是日记本身，附属数据不喧宾夺主。
+- 「天气」依赖定位，取不到（无权限/无网/日期超出 API 范围）时该段落直接省略。
+- 「笔记」是留给你在 Obsidian 里自由编辑的区域。
 
 ## 使用流程
 
@@ -48,10 +59,14 @@ generated_by: Vestige/1.0
 
 ## 关键技术决策
 
-- 读日历查 `CalendarContract.Instances`（自动展开重复事件），全天事件单独渲染为 `- 全天 ...`。
+- 读日历查 `CalendarContract.Instances`（自动展开重复事件）。
+- 天气用 **Open-Meteo**（免费、无需 API Key），定位用 `LocationManager` 最后已知位置
+  （不依赖 Google Play 服务）。**注意：导出含天气时，经纬度会发送到 api.open-meteo.com，
+  这是 App 唯一的对外网络请求。**
 - 文件写入走 **SAF**（`OpenDocumentTree` + 持久化 URI 授权），无需任何存储权限，
   天然兼容 Obsidian Vault 与 Android 10+ 分区存储。
 - 唯一持久化的状态是导出目录 URI，存于 DataStore。
+- 应用名与 Markdown 文字跟随系统语言：中文「留痕」、其它「Vestige」。
 
 ## 构建
 
@@ -68,7 +83,8 @@ gradle wrapper      # 首次生成 wrapper（若无 gradlew）
 
 ## 兼容性
 
-- 运行时权限 `READ_CALENDAR`（API 23+ 必须运行时申请）。
+- 运行时权限：`READ_CALENDAR`（必需）、`ACCESS_COARSE_LOCATION`（可选，仅用于天气）、
+  `INTERNET`（天气请求）。三者均 API 23+ 运行时申请；定位被拒只是没有天气段落，不影响导出。
 - minSdk 26 可直接使用 `java.time`，无需 desugaring。
 - Google / 本地 / Samsung 等只要通过系统 Calendar Provider 暴露即可统一读取。
-- 无标题事件做了 `(无标题)` 兜底。
+- 天气仅在 Open-Meteo 支持的日期范围内（约过去 3 个月 ~ 未来 16 天）可用，超出则省略。

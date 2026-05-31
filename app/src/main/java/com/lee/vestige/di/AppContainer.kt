@@ -4,8 +4,11 @@ import android.content.Context
 import android.net.Uri
 import com.lee.vestige.data.plugin.CalendarPlugin
 import com.lee.vestige.data.plugin.DataPlugin
+import com.lee.vestige.data.plugin.WeatherPlugin
 import com.lee.vestige.data.settings.SettingsStore
 import com.lee.vestige.data.source.CalendarDataSource
+import com.lee.vestige.data.source.LocationProvider
+import com.lee.vestige.data.source.WeatherDataSource
 import com.lee.vestige.domain.DayAggregator
 import com.lee.vestige.export.ExportTarget
 import com.lee.vestige.export.MarkdownRenderer
@@ -24,14 +27,19 @@ class AppContainer(context: Context) {
     val settingsStore = SettingsStore(appContext)
 
     private val calendarDataSource = CalendarDataSource(appContext)
+    private val locationProvider = LocationProvider(appContext)
+    private val weatherDataSource = WeatherDataSource()
 
+    // Order within a day note is controlled by each plugin's `order`
+    // (weather = 10, events = 20), not by list position.
     private val plugins: List<DataPlugin> = listOf(
-        CalendarPlugin(calendarDataSource),
-        // Future: WeatherPlugin(...), StepsPlugin(...), SleepPlugin(...)
+        WeatherPlugin(appContext, locationProvider, weatherDataSource),
+        CalendarPlugin(appContext, calendarDataSource),
+        // Future: StepsPlugin(...), SleepPlugin(...)
     )
 
     val aggregator = DayAggregator(plugins)
-    val renderer = MarkdownRenderer()
+    val renderer = MarkdownRenderer(appContext)
 
     /**
      * Resolves the export destination. V1 always returns a local SAF target built from

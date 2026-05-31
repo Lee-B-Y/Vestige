@@ -29,7 +29,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.lee.vestige.R
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -43,23 +45,25 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
+    fun isGranted(permission: String) =
+        ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+
     var hasCalendarPermission by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                context, Manifest.permission.READ_CALENDAR,
-            ) == PackageManager.PERMISSION_GRANTED,
-        )
+        mutableStateOf(isGranted(Manifest.permission.READ_CALENDAR))
+    }
+    var hasLocationPermission by remember {
+        mutableStateOf(isGranted(Manifest.permission.ACCESS_COARSE_LOCATION))
     }
     var showDatePicker by remember { mutableStateOf(false) }
 
-    // After permission is granted, proceed straight to export.
+    // Calendar is required; location is optional (only enables the weather section).
+    // Once calendar is granted, export regardless of the location outcome.
     val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        hasCalendarPermission = granted
-        if (granted) viewModel.export() else {
-            // surfaced via snackbar
-        }
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { result ->
+        result[Manifest.permission.READ_CALENDAR]?.let { hasCalendarPermission = it }
+        result[Manifest.permission.ACCESS_COARSE_LOCATION]?.let { hasLocationPermission = it }
+        if (hasCalendarPermission) viewModel.export()
     }
 
     val directoryLauncher = rememberLauncherForActivityResult(
@@ -90,7 +94,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("留痕 Vestige — 日历导出")
+            Text(stringResource(R.string.app_name))
 
             Text("导出目录：" + (state.exportDirUri?.toString() ?: "未选择"))
             OutlinedButton(onClick = { directoryLauncher.launch(null) }) {
@@ -104,10 +108,14 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
 
             Button(
                 onClick = {
-                    if (hasCalendarPermission) {
+                    val needed = buildList {
+                        if (!hasCalendarPermission) add(Manifest.permission.READ_CALENDAR)
+                        if (!hasLocationPermission) add(Manifest.permission.ACCESS_COARSE_LOCATION)
+                    }
+                    if (needed.isEmpty()) {
                         viewModel.export()
                     } else {
-                        permissionLauncher.launch(Manifest.permission.READ_CALENDAR)
+                        permissionLauncher.launch(needed.toTypedArray())
                     }
                 },
                 enabled = !state.isExporting,

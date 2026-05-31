@@ -55,9 +55,9 @@ class CalendarDataSource(private val context: Context) {
                     val iAllDay = c.getColumnIndexOrThrow(CalendarContract.Instances.ALL_DAY)
                     val iCal = c.getColumnIndexOrThrow(CalendarContract.Instances.CALENDAR_DISPLAY_NAME)
                     while (c.moveToNext()) {
-                        val rawTitle = c.getString(iTitle)
+                        // Keep the raw title (may be empty); rendering decides how to show it.
                         events += CalendarEvent(
-                            title = if (rawTitle.isNullOrBlank()) "(无标题)" else rawTitle,
+                            title = c.getString(iTitle).orEmpty(),
                             startMillis = c.getLong(iBegin),
                             endMillis = c.getLong(iEnd),
                             isAllDay = c.getInt(iAllDay) == 1,

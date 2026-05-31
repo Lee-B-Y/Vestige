@@ -1,0 +1,18 @@
+<resources>
+    <!-- Chinese locale. -->
+    <string name="app_name">留痕</string>
+
+    <string name="section_calendar">事件</string>
+    <string name="section_weather">天气</string>
+    <string name="section_notes">笔记</string>
+
+    <string name="weather_clear">晴</string>
+    <string name="weather_cloudy">多云</string>
+    <string name="weather_fog">雾</string>
+    <string name="weather_drizzle">毛毛雨</string>
+    <string name="weather_rain">雨</string>
+    <string name="weather_snow">雪</string>
+    <string name="weather_showers">阵雨</string>
+    <string name="weather_thunderstorm">雷暴</string>
+    <string name="weather_unknown">未知</string>
+</resources>
