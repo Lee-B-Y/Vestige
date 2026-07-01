@@ -193,7 +193,7 @@ private fun HomeScreen(
 
     // (Re)load notes whenever the drawer opens.
     LaunchedEffect(drawerState.currentValue) {
-        if (drawerState.currentValue == DrawerValue.Open && state.exportDirUri != null) {
+        if (drawerState.currentValue == DrawerValue.Open && state.noteLocation != null) {
             onSearch(query)
         }
     }
@@ -229,7 +229,7 @@ private fun HomeScreen(
                     actions = {
                         // Directory setting tucked into the corner — rarely changed.
                         TextButton(onClick = onPickDirectory) {
-                            Text(if (state.exportDirUri == null) "选择目录" else "目录")
+                            Text(if (state.noteLocation == null) "选择目录" else "目录")
                         }
                     },
                 )
@@ -264,7 +264,7 @@ private fun HomeScreen(
                     else -> Text("健康数据不可用（需安装 Health Connect）")
                 }
 
-                if (state.exportDirUri == null) {
+                if (state.noteLocation == null) {
                     Text("提示：先在右上角选择一个保存目录（建议 Obsidian Vault 里的日记文件夹）。")
                 }
             }

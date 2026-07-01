@@ -9,8 +9,8 @@ import java.time.LocalDate
 
 /**
  * Local note store: reads/writes/lists Markdown under a user-chosen directory via the
- * Storage Access Framework. Notes live in `Vestige/年/月/日.md` (folders created on
- * demand). Needs no storage permission and works with Obsidian vault folders.
+ * Storage Access Framework. Notes live in `年/月/日.md` below the effective note root
+ * (folders created on demand). Needs no storage permission and works with Obsidian.
  *
  * [treeUri] comes from `ACTION_OPEN_DOCUMENT_TREE` (persisted).
  *
@@ -20,12 +20,16 @@ import java.time.LocalDate
 class SafNoteStore(
     private val context: Context,
     private val treeUri: Uri,
+    relativeRoot: String? = null,
 ) : NoteStore {
+
+    private val rootFolders = listOfNotNull(relativeRoot)
 
     override val displayName: String = "本地目录"
 
     override suspend fun read(date: LocalDate): String? = withContext(Dispatchers.IO) {
-        val dir = navigate(NotePath.folders(date), create = false) ?: return@withContext null
+        val dir = navigate(rootFolders + NotePath.folders(date), create = false)
+            ?: return@withContext null
         val file = dir.findFile(NotePath.fileName(date))?.takeIf { it.isFile }
             ?: return@withContext null
         readText(file)
@@ -33,7 +37,7 @@ class SafNoteStore(
 
     override suspend fun write(date: LocalDate, content: String): SaveResult =
         withContext(Dispatchers.IO) {
-            val dir = navigate(NotePath.folders(date), create = true)
+            val dir = navigate(rootFolders + NotePath.folders(date), create = true)
                 ?: return@withContext SaveResult.Error("无法访问或创建保存目录")
             val name = NotePath.fileName(date)
             val file = dir.findFile(name)?.takeIf { it.isFile }
@@ -69,9 +73,9 @@ class SafNoteStore(
         }.sortedByDescending { it.date }
     }
 
-    /** Walk base → year → month, collecting (date, file) for every valid note. */
+    /** Walk note root → year → month, collecting (date, file) for every valid note. */
     private fun allNoteFiles(): List<Pair<LocalDate, DocumentFile>> {
-        val base = navigate(listOf(NotePath.BASE), create = false) ?: return emptyList()
+        val base = navigate(rootFolders, create = false) ?: return emptyList()
         val result = mutableListOf<Pair<LocalDate, DocumentFile>>()
         for (yearDir in base.listFiles()) {
             if (!yearDir.isDirectory) continue

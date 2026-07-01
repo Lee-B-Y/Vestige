@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.lee.vestige.VestigeApp
+import com.lee.vestige.data.settings.NoteLocation
 import com.lee.vestige.export.NoteListItem
 import com.lee.vestige.export.SaveResult
 import kotlinx.coroutines.delay
@@ -19,7 +20,7 @@ enum class Screen { Home, Editor }
 
 data class MainUiState(
     val screen: Screen = Screen.Home,
-    val exportDirUri: Uri? = null,
+    val noteLocation: NoteLocation? = null,
     val editorDate: LocalDate = LocalDate.now(),
     val editorContent: String = "",
     val isBusy: Boolean = false,
@@ -46,11 +47,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     init {
         // Reflect the persisted export directory into UI state.
         viewModelScope.launch {
-            container.settingsStore.exportTreeUri.collect { uri ->
-                _uiState.update { it.copy(exportDirUri = uri) }
+            container.settingsStore.noteLocation.collect { location ->
+                _uiState.update { it.copy(noteLocation = location) }
             }
         }
-        // Timed auto-save: every 30s, persist if there are unsaved edits and we're editing.
+        // Timed auto-save: persist every minute if there are unsaved editor changes.
         viewModelScope.launch {
             while (true) {
                 delay(AUTO_SAVE_INTERVAL_MS)
@@ -85,14 +86,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * auto-save persists it.
      */
     fun openDay(date: LocalDate) {
-        val dirUri = _uiState.value.exportDirUri
-        if (dirUri == null) {
+        val location = _uiState.value.noteLocation
+        if (location == null) {
             _uiState.update { it.copy(message = "请先在右上角选择保存目录") }
             return
         }
         viewModelScope.launch {
             _uiState.update { it.copy(isBusy = true) }
-            val store = container.noteStoreFor(dirUri)
+            val store = container.noteStoreFor(location)
             val existing = store.read(date)
             val content = existing
                 ?: container.renderer.render(container.aggregator.aggregate(date))
@@ -113,10 +114,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * non-blank → full-text search results.
      */
     fun runSearch(query: String) {
-        val dirUri = _uiState.value.exportDirUri ?: return
+        val location = _uiState.value.noteLocation ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isBrowseLoading = true) }
-            val store = container.noteStoreFor(dirUri)
+            val store = container.noteStoreFor(location)
             val items = if (query.isBlank()) store.list() else store.search(query)
             _uiState.update { it.copy(browseItems = items, isBrowseLoading = false) }
         }
@@ -147,8 +148,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private suspend fun saveIfDirty() {
         if (!dirty) return
         val state = _uiState.value
-        val dirUri = state.exportDirUri ?: return
-        val store = container.noteStoreFor(dirUri)
+        val location = state.noteLocation ?: return
+        val store = container.noteStoreFor(location)
         when (val result = store.write(state.editorDate, state.editorContent)) {
             is SaveResult.Success -> dirty = false
             is SaveResult.Error ->

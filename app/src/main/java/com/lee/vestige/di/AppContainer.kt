@@ -1,11 +1,11 @@
 package com.lee.vestige.di
 
 import android.content.Context
-import android.net.Uri
 import com.lee.vestige.data.plugin.CalendarPlugin
 import com.lee.vestige.data.plugin.DataPlugin
 import com.lee.vestige.data.plugin.HealthPlugin
 import com.lee.vestige.data.plugin.WeatherPlugin
+import com.lee.vestige.data.settings.NoteLocation
 import com.lee.vestige.data.settings.SettingsStore
 import com.lee.vestige.data.source.CalendarDataSource
 import com.lee.vestige.data.source.HealthDataSource
@@ -47,9 +47,13 @@ class AppContainer(context: Context) {
     val renderer = MarkdownRenderer(appContext)
 
     /**
-     * Resolves the note store. V1 always returns a local SAF store built from the chosen
+     * Resolves the note store. It currently returns a local SAF store built from the chosen
      * directory. Future: read a "backend" setting and return a cloud store (OneDrive /
      * Baidu Netdisk) instead — callers stay unchanged.
      */
-    fun noteStoreFor(treeUri: Uri): NoteStore = SafNoteStore(appContext, treeUri)
+    fun noteStoreFor(location: NoteLocation): NoteStore = SafNoteStore(
+        context = appContext,
+        treeUri = location.treeUri,
+        relativeRoot = location.relativeRoot,
+    )
 }
