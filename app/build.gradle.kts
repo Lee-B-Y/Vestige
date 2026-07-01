@@ -54,4 +54,6 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.documentfile)
     implementation(libs.androidx.health.connect)
+
+    testImplementation(libs.junit)
 }

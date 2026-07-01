@@ -96,9 +96,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             _uiState.update { it.copy(isBusy = true, openingDate = date) }
             val store = container.noteStoreFor(location)
             val existing = store.read(date)
-            val content = existing
-                ?: container.renderer.render(container.aggregator.aggregate(date))
-            dirty = existing == null // generated-but-unsaved should be saved
+            val entry = container.aggregator.aggregate(date)
+            val content = if (existing == null) {
+                container.renderer.render(entry)
+            } else {
+                container.renderer.refresh(existing, entry)
+            }
+            dirty = existing == null || content != existing
             _uiState.update {
                 it.copy(
                     screen = Screen.Editor,

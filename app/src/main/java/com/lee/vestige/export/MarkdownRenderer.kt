@@ -27,15 +27,21 @@ class MarkdownRenderer(private val context: Context) {
         appendLine()
 
         entry.sections.forEach { section ->
+            appendLine("<!-- vestige:${section.key}:start -->")
             appendLine("## ${section.title}")
             appendLine()
             section.lines.forEach { appendLine(it) }
+            appendLine("<!-- vestige:${section.key}:end -->")
             appendLine()
         }
 
         appendLine("## ${context.getString(R.string.section_notes)}")
         appendLine()
     }
+
+    /** Refresh generated blocks while preserving the user's Notes section verbatim. */
+    fun refresh(existing: String, entry: DayEntry): String =
+        MarkdownDocumentMerger.merge(existing, render(entry))
 
     companion object {
         const val GENERATED_BY = "Vestige/1.0"

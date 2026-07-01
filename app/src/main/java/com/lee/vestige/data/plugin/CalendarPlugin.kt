@@ -24,6 +24,7 @@ class CalendarPlugin(
     private val dataSource: CalendarDataSource,
 ) : DataPlugin {
 
+    override val key: String = "calendar"
     override val sectionTitle: String get() = context.getString(R.string.section_calendar)
     override val order: Int = 20
 
@@ -45,6 +46,6 @@ class CalendarPlugin(
                 if (title.isEmpty()) "- $start-$end" else "- $start-$end $title"
             }
         }
-        return DaySection(title = sectionTitle, order = order, lines = lines)
+        return DaySection(key = key, title = sectionTitle, order = order, lines = lines)
     }
 }

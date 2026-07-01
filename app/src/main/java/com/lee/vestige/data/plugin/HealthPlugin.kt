@@ -21,6 +21,7 @@ class HealthPlugin(
     private val healthDataSource: HealthDataSource,
 ) : DataPlugin {
 
+    override val key: String = "health"
     override val sectionTitle: String get() = context.getString(R.string.section_health)
     override val order: Int = 15
 
@@ -39,7 +40,7 @@ class HealthPlugin(
             }
         }
         if (lines.isEmpty()) return null
-        return DaySection(title = sectionTitle, order = order, lines = lines)
+        return DaySection(key = key, title = sectionTitle, order = order, lines = lines)
     }
 
     private fun formatDuration(minutes: Long): String {
