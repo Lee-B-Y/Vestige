@@ -26,7 +26,7 @@ class WeatherPlugin(
     override val order: Int = 10
 
     override suspend fun fetch(date: LocalDate): DaySection? {
-        val (lat, lon) = locationProvider.lastKnownLocation() ?: return null
+        val (lat, lon) = locationProvider.locationForWeather() ?: return null
         val weather = weatherDataSource.dailyWeather(lat, lon, date) ?: return null
 
         val condition = context.getString(conditionRes(weather.weatherCode))

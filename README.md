@@ -91,8 +91,9 @@ generated_by: Vestige/1.0
 ## 关键技术决策
 
 - 读日历查 `CalendarContract.Instances`（自动展开重复事件）。
-- 天气用 **Open-Meteo**（免费、无需 API Key），定位用 `LocationManager` 最后已知位置
-  （不依赖 Google Play 服务）。**注意：导出含天气时，经纬度会发送到 api.open-meteo.com，
+- 天气用 **Open-Meteo**（免费、无需 API Key，并使用自动最佳模型），定位优先通过
+  `LocationManager` 获取当前位置，超时才回退到 12 小时内的缓存位置（不依赖 Google Play 服务）。
+  **注意：导出含天气时，经纬度会发送到 api.open-meteo.com，
   这是 App 唯一的对外网络请求。**
 - 健康用 **Health Connect**（`androidx.health.connect:connect-client`）统一读取各家穿戴数据；
   通过聚合 API 读睡眠时长/步数总和/静息心率均值。在首页一次性「连接健康数据」授权
