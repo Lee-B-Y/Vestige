@@ -247,7 +247,27 @@ private fun HomeScreen(
                     enabled = !state.isBusy,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text(if (state.isBusy) "打开中…" else "写今天的日记")
+                    Text(
+                        if (state.openingDate == LocalDate.now()) {
+                            stringResource(R.string.action_opening_diary)
+                        } else {
+                            stringResource(R.string.action_write_today)
+                        },
+                    )
+                }
+
+                Button(
+                    onClick = { onOpenDay(LocalDate.now().minusDays(1)) },
+                    enabled = !state.isBusy,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        if (state.openingDate == LocalDate.now().minusDays(1)) {
+                            stringResource(R.string.action_opening_diary)
+                        } else {
+                            stringResource(R.string.action_write_yesterday)
+                        },
+                    )
                 }
 
                 // Secondary, de-emphasized: writing for another day.

@@ -2,6 +2,11 @@
     <!-- Default / non-Chinese locales (English). -->
     <string name="app_name">Vestige</string>
 
+    <!-- Home actions. -->
+    <string name="action_write_today">Write today\'s diary</string>
+    <string name="action_write_yesterday">Write yesterday\'s diary</string>
+    <string name="action_opening_diary">Opening…</string>
+
     <!-- Markdown section headings written into the exported file. -->
     <string name="section_calendar">Events</string>
     <string name="section_weather">Weather</string>

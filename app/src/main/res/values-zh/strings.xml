@@ -2,6 +2,10 @@
     <!-- Chinese locale. -->
     <string name="app_name">留痕</string>
 
+    <string name="action_write_today">写今天的日记</string>
+    <string name="action_write_yesterday">写昨天的日记</string>
+    <string name="action_opening_diary">打开中…</string>
+
     <string name="section_calendar">事件</string>
     <string name="section_weather">天气</string>
     <string name="section_health">健康</string>

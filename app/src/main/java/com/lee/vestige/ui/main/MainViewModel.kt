@@ -24,6 +24,7 @@ data class MainUiState(
     val editorDate: LocalDate = LocalDate.now(),
     val editorContent: String = "",
     val isBusy: Boolean = false,
+    val openingDate: LocalDate? = null,
     /** Browse/search results. */
     val browseItems: List<NoteListItem> = emptyList(),
     val isBrowseLoading: Boolean = false,
@@ -92,7 +93,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         viewModelScope.launch {
-            _uiState.update { it.copy(isBusy = true) }
+            _uiState.update { it.copy(isBusy = true, openingDate = date) }
             val store = container.noteStoreFor(location)
             val existing = store.read(date)
             val content = existing
@@ -104,6 +105,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     editorDate = date,
                     editorContent = content,
                     isBusy = false,
+                    openingDate = null,
                 )
             }
         }
