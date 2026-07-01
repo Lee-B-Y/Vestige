@@ -26,6 +26,9 @@ data class MainUiState(
     /** Browse/search results. */
     val browseItems: List<NoteListItem> = emptyList(),
     val isBrowseLoading: Boolean = false,
+    /** Health Connect state. */
+    val healthAvailable: Boolean = false,
+    val healthConnected: Boolean = false,
     /** Transient user-facing message (error / status). */
     val message: String? = null,
 )
@@ -53,6 +56,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 delay(AUTO_SAVE_INTERVAL_MS)
                 if (_uiState.value.screen == Screen.Editor) saveIfDirty()
             }
+        }
+        refreshHealthState()
+    }
+
+    /** Permissions the Health Connect launcher should request. */
+    val healthPermissions: Set<String> get() = container.healthDataSource.permissions
+
+    /** Recompute Health Connect availability + whether we're granted (call on resume). */
+    fun refreshHealthState() {
+        viewModelScope.launch {
+            val available = container.healthDataSource.isAvailable()
+            val connected = available && container.healthDataSource.hasAllPermissions()
+            _uiState.update { it.copy(healthAvailable = available, healthConnected = connected) }
         }
     }
 

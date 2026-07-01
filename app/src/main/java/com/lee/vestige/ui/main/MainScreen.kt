@@ -54,6 +54,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -128,11 +129,21 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
         }
     }
 
-    // Flush unsaved edits when the app goes to background.
+    // Health Connect uses its own permission contract (not the standard runtime one).
+    val healthLauncher = rememberLauncherForActivityResult(
+        PermissionController.createRequestPermissionResultContract(),
+    ) { _ -> viewModel.refreshHealthState() }
+
+    // Flush unsaved edits on background; re-check health connection on resume
+    // (the user may have changed it in the Health Connect settings).
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP) viewModel.onStop()
+            when (event) {
+                Lifecycle.Event.ON_STOP -> viewModel.onStop()
+                Lifecycle.Event.ON_RESUME -> viewModel.refreshHealthState()
+                else -> Unit
+            }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -153,6 +164,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
             onOpenDay = { date -> openWithPermissions(date) },
             onSearch = viewModel::runSearch,
             onOpenNote = { date -> viewModel.openDay(date) },
+            onConnectHealth = { healthLauncher.launch(viewModel.healthPermissions) },
         )
         Screen.Editor -> EditorScreen(
             state = state,
@@ -172,6 +184,7 @@ private fun HomeScreen(
     onOpenDay: (LocalDate) -> Unit,
     onSearch: (String) -> Unit,
     onOpenNote: (LocalDate) -> Unit,
+    onConnectHealth: () -> Unit,
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -240,6 +253,15 @@ private fun HomeScreen(
                 // Secondary, de-emphasized: writing for another day.
                 TextButton(onClick = { showDatePicker = true }, enabled = !state.isBusy) {
                     Text("其它日期…")
+                }
+
+                // One-time health data connection (optional data source).
+                when {
+                    state.healthConnected -> Text("✓ 健康数据已连接")
+                    state.healthAvailable -> TextButton(onClick = onConnectHealth) {
+                        Text("连接健康数据")
+                    }
+                    else -> Text("健康数据不可用（需安装 Health Connect）")
                 }
 
                 if (state.exportDirUri == null) {

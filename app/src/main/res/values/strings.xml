@@ -5,7 +5,15 @@
     <!-- Markdown section headings written into the exported file. -->
     <string name="section_calendar">Events</string>
     <string name="section_weather">Weather</string>
+    <string name="section_health">Health</string>
     <string name="section_notes">Notes</string>
+
+    <!-- Health section labels. -->
+    <string name="health_sleep">Sleep</string>
+    <string name="health_steps">Steps</string>
+    <string name="health_resting_hr">Resting HR</string>
+    <string name="health_duration_hm">%1$dh %2$dm</string>
+    <string name="health_duration_m">%1$dm</string>
 
     <!-- Weather condition descriptions (WMO weather codes). -->
     <string name="weather_clear">Clear</string>

@@ -48,6 +48,12 @@ generated_by: Vestige/1.0
 
 - 晴 18°C ~ 26°C
 
+## 健康
+
+- 睡眠 7 小时 20 分
+- 步数 8,432
+- 静息心率 58 bpm
+
 ## 事件
 
 - 我的生日
@@ -62,12 +68,14 @@ generated_by: Vestige/1.0
 - 「事件」段落刻意保持简洁：全天事件只写标题、不加前缀；无标题事件留空待补。
   重心是日记本身，附属数据不喧宾夺主。
 - 「天气」依赖定位，取不到（无权限/无网/日期超出 API 范围）时该段落直接省略。
+- 「健康」来自 Health Connect（睡眠取前一晚、步数与静息心率取当天）；未连接或无数据则省略。
 - 「笔记」是留给你写日记正文的区域。
 
 ## 使用流程
 
 1. 首次在右上角选择保存目录（默认定位 Documents，很少改，之后收在角落）。
-2. 首页点「**写今天的日记**」：当天文件不存在则自动生成草稿（天气+事件）并进入编辑器；
+   （可选）点首页「**连接健康数据**」一次性授权 Health Connect，之后日记会自动带上健康段落。
+2. 首页点「**写今天的日记**」：当天文件不存在则自动生成草稿（天气+健康+事件）并进入编辑器；
    已存在则**载入续写**。其它日期走「其它日期…」。
 3. 在编辑器里直接写。**自动保存**：每 1 分钟、退出编辑页、App 切后台 各存一次，
    无需手动点保存。
@@ -82,6 +90,9 @@ generated_by: Vestige/1.0
 - 天气用 **Open-Meteo**（免费、无需 API Key），定位用 `LocationManager` 最后已知位置
   （不依赖 Google Play 服务）。**注意：导出含天气时，经纬度会发送到 api.open-meteo.com，
   这是 App 唯一的对外网络请求。**
+- 健康用 **Health Connect**（`androidx.health.connect:connect-client`）统一读取各家穿戴数据；
+  通过聚合 API 读睡眠时长/步数总和/静息心率均值。在首页一次性「连接健康数据」授权
+  （HC 专用权限契约），不可用/未授权/无数据则省略「健康」段落。
 - 文件读写走 **SAF**（`OpenDocumentTree` + 持久化 URI 授权），无需任何存储权限，
   按 `Vestige/年/月` 子目录 `findFile`/`createDirectory`，天然兼容 Obsidian Vault 与 Android 10+ 分区存储。
   目录选择器通过 `DocumentsContract.EXTRA_INITIAL_URI` 默认定位到 Documents（尽力而为）。
@@ -109,6 +120,9 @@ gradle wrapper      # 首次生成 wrapper（若无 gradlew）
 
 - 运行时权限：`READ_CALENDAR`（必需）、`ACCESS_COARSE_LOCATION`（可选，仅用于天气）、
   `INTERNET`（天气请求）。三者均 API 23+ 运行时申请；定位被拒只是没有天气段落，不影响导出。
+- 健康权限 `health.READ_SLEEP` / `READ_STEPS` / `READ_RESTING_HEART_RATE` 走 Health Connect
+  专用授权流程。Android 14+ 系统内置 HC；13 及以下需用户安装 Health Connect App。
+  **上架 Google Play 需提交健康数据用途声明 + 隐私政策**（已在 Manifest 加权限用途说明页）。
 - minSdk 26 可直接使用 `java.time`，无需 desugaring。
 - Google / 本地 / Samsung 等只要通过系统 Calendar Provider 暴露即可统一读取。
 - 天气仅在 Open-Meteo 支持的日期范围内（约过去 3 个月 ~ 未来 16 天）可用，超出则省略。
