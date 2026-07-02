@@ -4,12 +4,14 @@ import android.content.Context
 import com.lee.vestige.data.plugin.CalendarPlugin
 import com.lee.vestige.data.plugin.DataPlugin
 import com.lee.vestige.data.plugin.HealthPlugin
+import com.lee.vestige.data.plugin.LocationPlugin
 import com.lee.vestige.data.plugin.WeatherPlugin
 import com.lee.vestige.data.settings.NoteLocation
 import com.lee.vestige.data.settings.SettingsStore
 import com.lee.vestige.data.source.CalendarDataSource
 import com.lee.vestige.data.source.HealthDataSource
 import com.lee.vestige.data.source.LocationProvider
+import com.lee.vestige.data.source.LocationNameResolver
 import com.lee.vestige.data.source.WeatherDataSource
 import com.lee.vestige.domain.DayAggregator
 import com.lee.vestige.export.MarkdownRenderer
@@ -30,6 +32,7 @@ class AppContainer(context: Context) {
 
     private val calendarDataSource = CalendarDataSource(appContext)
     private val locationProvider = LocationProvider(appContext)
+    private val locationNameResolver = LocationNameResolver(appContext)
     private val weatherDataSource = WeatherDataSource()
 
     /** Exposed so the UI can check availability / request Health Connect permissions. */
@@ -39,6 +42,7 @@ class AppContainer(context: Context) {
     // (weather = 10, health = 15, events = 20), not by list position.
     private val plugins: List<DataPlugin> = listOf(
         WeatherPlugin(appContext, locationProvider, weatherDataSource),
+        LocationPlugin(appContext, locationProvider, locationNameResolver),
         HealthPlugin(appContext, healthDataSource),
         CalendarPlugin(appContext, calendarDataSource),
     )

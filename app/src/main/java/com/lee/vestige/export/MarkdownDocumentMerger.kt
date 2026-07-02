@@ -3,9 +3,11 @@ package com.lee.vestige.export
 /** Safely refreshes Vestige-managed blocks in an existing daily note. */
 object MarkdownDocumentMerger {
 
-    private val managedKeys = listOf("weather", "health", "calendar")
+    private val sectionOrder = listOf("weather", "location", "health", "calendar")
+    private val refreshableKeys = setOf("weather", "health", "calendar")
     private val legacyTitles = mapOf(
         "weather" to setOf("天气", "Weather"),
+        "location" to setOf("位置", "Location"),
         "health" to setOf("健康", "Health"),
         "calendar" to setOf("事件", "Events", "Calendar"),
     )
@@ -27,8 +29,12 @@ object MarkdownDocumentMerger {
         return buildString {
             append(header)
             append("\n\n")
-            managedKeys.forEach { key ->
-                val block = freshSections[key] ?: existingSections[key]
+            sectionOrder.forEach { key ->
+                val block = if (key in refreshableKeys) {
+                    freshSections[key] ?: existingSections[key]
+                } else {
+                    existingSections[key]
+                }
                 if (block != null) {
                     append(block.trim())
                     append("\n\n")

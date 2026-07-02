@@ -8,6 +8,7 @@
 
     <string name="section_calendar">事件</string>
     <string name="section_weather">天气</string>
+    <string name="section_location">位置</string>
     <string name="section_health">健康</string>
     <string name="section_notes">笔记</string>
 

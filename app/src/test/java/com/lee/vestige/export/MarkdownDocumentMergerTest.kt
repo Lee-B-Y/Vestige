@@ -74,6 +74,35 @@ date: 2026-07-01
     }
 
     @Test
+    fun `never refreshes a user edited location block`() {
+        val existing = markedDocument(
+            weather = "- 旧天气",
+            location = "- 用户手动修改的位置",
+        )
+        val fresh = markedDocument(
+            weather = "- 新天气",
+            location = "- 后台取得的新位置",
+        )
+
+        val result = MarkdownDocumentMerger.merge(existing, fresh)
+
+        assertTrue(result.contains("- 用户手动修改的位置"))
+        assertFalse(result.contains("- 后台取得的新位置"))
+        assertTrue(result.contains("- 新天气"))
+    }
+
+    @Test
+    fun `does not restore a location removed by the user`() {
+        val existing = markedDocument(weather = "- 旧天气")
+        val fresh = markedDocument(weather = "- 新天气", location = "- 新取得的位置")
+
+        val result = MarkdownDocumentMerger.merge(existing, fresh)
+
+        assertFalse(result.contains("vestige:location"))
+        assertFalse(result.contains("- 新取得的位置"))
+    }
+
+    @Test
     fun `does not modify a document without notes boundary`() {
         val existing = "# 自定义文档\n\n正文"
 
@@ -84,6 +113,7 @@ date: 2026-07-01
 
     private fun markedDocument(
         weather: String?,
+        location: String? = null,
         calendar: String? = null,
     ): String = buildString {
         appendLine("---")
@@ -99,6 +129,14 @@ date: 2026-07-01
             appendLine()
             appendLine(it)
             appendLine("<!-- vestige:weather:end -->")
+            appendLine()
+        }
+        location?.let {
+            appendLine("<!-- vestige:location:start -->")
+            appendLine("## 位置")
+            appendLine()
+            appendLine(it)
+            appendLine("<!-- vestige:location:end -->")
             appendLine()
         }
         calendar?.let {
