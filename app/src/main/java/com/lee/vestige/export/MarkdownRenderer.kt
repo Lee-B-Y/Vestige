@@ -27,11 +27,9 @@ class MarkdownRenderer(private val context: Context) {
         appendLine()
 
         entry.sections.forEach { section ->
-            appendLine("<!-- vestige:${section.key}:start -->")
             appendLine("## ${section.title}")
             appendLine()
             section.lines.forEach { appendLine(it) }
-            appendLine("<!-- vestige:${section.key}:end -->")
             appendLine()
         }
 

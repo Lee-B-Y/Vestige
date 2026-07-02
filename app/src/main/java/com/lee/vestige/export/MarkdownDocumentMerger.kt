@@ -22,8 +22,8 @@ object MarkdownDocumentMerger {
         val notes = existing.substring(existingNotesStart)
 
         val existingSections = extractSections(existingPrefix)
-        val freshSections = extractMarkedSections(freshPrefix)
-        val headerEnd = MARKED_SECTION.find(freshPrefix)?.range?.first ?: freshPrefix.length
+        val freshSections = extractSections(freshPrefix)
+        val headerEnd = firstManagedSectionStart(freshPrefix) ?: freshPrefix.length
         val header = freshPrefix.substring(0, headerEnd).trimEnd()
 
         return buildString {
@@ -49,7 +49,7 @@ object MarkdownDocumentMerger {
         legacyTitles.forEach { (key, titles) ->
             if (key !in sections) {
                 findLegacySection(prefix, titles)?.let { body ->
-                    sections[key] = markedBlock(key, body)
+                    sections[key] = body
                 }
             }
         }
@@ -58,8 +58,20 @@ object MarkdownDocumentMerger {
 
     private fun extractMarkedSections(text: String): Map<String, String> =
         MARKED_SECTION.findAll(text).associate { match ->
-            match.groupValues[1] to match.value.trimEnd()
+            match.groupValues[1] to match.groupValues[2].trim()
         }
+
+    private fun firstManagedSectionStart(text: String): Int? {
+        val markedStart = MARKED_SECTION.find(text)?.range?.first
+        val legacyStart = SECTION_HEADING.findAll(text)
+            .firstOrNull { heading ->
+                val title = heading.groupValues[1].trim()
+                legacyTitles.values.any { title in it }
+            }
+            ?.range
+            ?.first
+        return listOfNotNull(markedStart, legacyStart).minOrNull()
+    }
 
     private fun findLegacySection(text: String, titles: Set<String>): String? {
         val headings = SECTION_HEADING.findAll(text).toList()
@@ -70,14 +82,8 @@ object MarkdownDocumentMerger {
         return text.substring(start, end).trimEnd()
     }
 
-    private fun markedBlock(key: String, body: String): String = buildString {
-        appendLine("<!-- vestige:$key:start -->")
-        appendLine(body)
-        append("<!-- vestige:$key:end -->")
-    }
-
     private val MARKED_SECTION = Regex(
-        "(?ms)^<!-- vestige:([a-z_]+):start -->\\s*$.*?" +
+        "(?ms)^<!-- vestige:([a-z_]+):start -->\\s*$(.*?)" +
             "^<!-- vestige:\\1:end -->\\s*$",
     )
     private val SECTION_HEADING = Regex("(?m)^## ([^\\r\\n]+)\\s*$")
