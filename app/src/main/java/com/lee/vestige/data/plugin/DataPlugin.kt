@@ -11,6 +11,9 @@ import java.time.LocalDate
  * new source means writing one new class — the export pipeline does not change.
  */
 interface DataPlugin {
+    /** Stable identifier used to update this plugin's generated Markdown block. */
+    val key: String
+
     /** Section heading in the Markdown output, e.g. "Calendar" / "Weather". */
     val sectionTitle: String
 

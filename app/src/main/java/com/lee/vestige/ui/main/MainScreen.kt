@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -193,7 +194,7 @@ private fun HomeScreen(
 
     // (Re)load notes whenever the drawer opens.
     LaunchedEffect(drawerState.currentValue) {
-        if (drawerState.currentValue == DrawerValue.Open && state.exportDirUri != null) {
+        if (drawerState.currentValue == DrawerValue.Open && state.noteLocation != null) {
             onSearch(query)
         }
     }
@@ -229,7 +230,7 @@ private fun HomeScreen(
                     actions = {
                         // Directory setting tucked into the corner — rarely changed.
                         TextButton(onClick = onPickDirectory) {
-                            Text(if (state.exportDirUri == null) "选择目录" else "目录")
+                            Text(if (state.noteLocation == null) "选择目录" else "目录")
                         }
                     },
                 )
@@ -247,7 +248,27 @@ private fun HomeScreen(
                     enabled = !state.isBusy,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text(if (state.isBusy) "打开中…" else "写今天的日记")
+                    Text(
+                        if (state.openingDate == LocalDate.now()) {
+                            stringResource(R.string.action_opening_diary)
+                        } else {
+                            stringResource(R.string.action_write_today)
+                        },
+                    )
+                }
+
+                Button(
+                    onClick = { onOpenDay(LocalDate.now().minusDays(1)) },
+                    enabled = !state.isBusy,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        if (state.openingDate == LocalDate.now().minusDays(1)) {
+                            stringResource(R.string.action_opening_diary)
+                        } else {
+                            stringResource(R.string.action_write_yesterday)
+                        },
+                    )
                 }
 
                 // Secondary, de-emphasized: writing for another day.
@@ -264,7 +285,7 @@ private fun HomeScreen(
                     else -> Text("健康数据不可用（需安装 Health Connect）")
                 }
 
-                if (state.exportDirUri == null) {
+                if (state.noteLocation == null) {
                     Text("提示：先在右上角选择一个保存目录（建议 Obsidian Vault 里的日记文件夹）。")
                 }
             }
@@ -308,6 +329,7 @@ private fun EditorScreen(
     BackHandler(onBack = onBack)
 
     Scaffold(
+        modifier = Modifier.imePadding(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(

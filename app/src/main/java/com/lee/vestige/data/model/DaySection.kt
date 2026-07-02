@@ -9,6 +9,7 @@ package com.lee.vestige.data.model
  * new data sources (weather, steps, ...) are added.
  */
 data class DaySection(
+    val key: String,
     val title: String,
     val order: Int,
     val lines: List<String>,

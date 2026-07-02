@@ -21,16 +21,17 @@ class WeatherPlugin(
     private val weatherDataSource: WeatherDataSource,
 ) : DataPlugin {
 
+    override val key: String = "weather"
     override val sectionTitle: String get() = context.getString(R.string.section_weather)
     override val order: Int = 10
 
     override suspend fun fetch(date: LocalDate): DaySection? {
-        val (lat, lon) = locationProvider.lastKnownLocation() ?: return null
+        val (lat, lon) = locationProvider.locationForWeather() ?: return null
         val weather = weatherDataSource.dailyWeather(lat, lon, date) ?: return null
 
         val condition = context.getString(conditionRes(weather.weatherCode))
         val line = "- $condition ${weather.minTempC.roundToInt()}°C ~ ${weather.maxTempC.roundToInt()}°C"
-        return DaySection(title = sectionTitle, order = order, lines = listOf(line))
+        return DaySection(key = key, title = sectionTitle, order = order, lines = listOf(line))
     }
 
     /** Maps a WMO weather code to a localized condition string resource. */

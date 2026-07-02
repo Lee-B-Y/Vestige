@@ -27,7 +27,7 @@ class WeatherDataSource {
                 "https://api.open-meteo.com/v1/forecast" +
                     "?latitude=$lat&longitude=$lon" +
                     "&daily=weather_code,temperature_2m_max,temperature_2m_min" +
-                    "&timezone=auto&start_date=$date&end_date=$date",
+                    "&models=best_match&timezone=auto&start_date=$date&end_date=$date",
             )
 
             val body = runCatching {
@@ -35,6 +35,7 @@ class WeatherDataSource {
                     requestMethod = "GET"
                     connectTimeout = 10_000
                     readTimeout = 10_000
+                    setRequestProperty("Accept", "application/json")
                 }
                 try {
                     if (conn.responseCode != HttpURLConnection.HTTP_OK) return@runCatching null
@@ -54,10 +55,10 @@ class WeatherDataSource {
         val min = daily.optJSONArray("temperature_2m_min") ?: return null
         if (codes.length() == 0) return null
 
-        WeatherInfo(
-            minTempC = min.optDouble(0),
-            maxTempC = max.optDouble(0),
-            weatherCode = codes.optInt(0),
-        )
+        val minTemp = min.optDouble(0)
+        val maxTemp = max.optDouble(0)
+        if (!minTemp.isFinite() || !maxTemp.isFinite()) return null
+
+        WeatherInfo(minTempC = minTemp, maxTempC = maxTemp, weatherCode = codes.optInt(0))
     }.getOrNull()
 }
